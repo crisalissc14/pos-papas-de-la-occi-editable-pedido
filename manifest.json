@@ -1,0 +1,9 @@
+{
+  "name": "POS PAPAS DE LA OCCI",
+  "short_name": "POS OCCI",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "description": "Sistema POS para comida rápida de papas y hamburguesas",
+  "icons": []
+}
