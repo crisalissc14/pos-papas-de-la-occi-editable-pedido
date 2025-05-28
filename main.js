@@ -89,14 +89,37 @@ function render() {
     }
   };
 
+  document.getElementById("registrar").onclick = async () => {
+  if (carrito.length > 0) {
+    try {
+      const pedido = {
+        fecha: new Date().toISOString(),
+        productos: carrito,
+        total: getTotal()
+      };
+      await addDoc(collection(db, "pedidos"), pedido);
+      ventas.push([...carrito]);  // local tracking
+      carrito = [];
+      alert("Pedido guardado en la nube ✅");
+      render();
+    } catch (e) {
+      console.error("Error al guardar en Firebase:", e);
+      alert("Error al guardar pedido ❌");
+    }
+  }
+};
+
   document.getElementById("reporte").onclick = () => {
     const resumen = {};
-    ventas.flat().forEach(p => {
-      if (!resumen[p.nombre]) {
-        resumen[p.nombre] = { unidades: 0, total: 0 };
-      }
-      resumen[p.nombre].unidades += 1;
-      resumen[p.nombre].total += p.precio;
+    ventas.forEach(pedido => {
+      pedido.forEach(prod => {
+        if (resumen[prod.nombre]) {
+          resumen[prod.nombre].unidades++;
+          resumen[prod.nombre].total += prod.precio;
+        } else {
+          resumen[prod.nombre] = { unidades: 1, total: prod.precio };
+        }
+      });
     });
 
     const totalVentas = ventas.flat().reduce((a, b) => a + b.precio, 0).toFixed(2);
