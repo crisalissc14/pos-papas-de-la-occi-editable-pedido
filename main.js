@@ -1,4 +1,3 @@
-import { db, collection, addDoc } from "./firebase.js";
 
 const productos = [
   { nombre: "Salchi Papa", precio: 1.50 },
