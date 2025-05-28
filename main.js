@@ -1,3 +1,15 @@
+import { 
+  db, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  Timestamp, 
+  serverTimestamp, 
+  deleteDoc, 
+  doc 
+} from "./firebase.js";
 
 const productos = [
   { nombre: "Salchi Papa", precio: 1.50 },
@@ -32,11 +44,22 @@ const productos = [
   { nombre: "Gaseosa 500ml", precio: 0.75 },
   { nombre: "Agua sin gas 600ml", precio: 0.75 },
 ];
-
 let carrito = [];
 let ventas = [];
 
 const app = document.getElementById("app");
+
+function getTotal() {
+  return carrito.reduce((a, b) => a + b.precio, 0);
+}
+
+function eliminarProducto(index) {
+  carrito.splice(index, 1);
+  render();
+}
+
+// Exponer eliminarProducto global para el onclick en HTML dinámico
+window.eliminarProducto = eliminarProducto;
 
 function render() {
   const total = getTotal();
@@ -50,16 +73,22 @@ function render() {
       <div class="text-lg">Total: $<span id="total">${total.toFixed(2)}</span></div>
     </div>
 
-    <div class="flex gap-2">
+    <div class="flex gap-2 mb-4">
       <button id="registrar" class="bg-green-600 text-white px-4 py-2 rounded w-full">Registrar pedido</button>
       <button id="reporte" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Ver reporte</button>
     </div>
 
     <div id="reporteVentas" class="mt-6 text-sm"></div>
+
+    <div class="flex gap-2 mt-4">
+      <button id="reporteDiario" class="bg-indigo-600 text-white px-4 py-2 rounded w-full">Reporte diario</button>
+      <button id="limpiar" class="bg-red-600 text-white px-4 py-2 rounded w-full">Limpiar pedidos antiguos</button>
+    </div>
   `;
 
+  // Renderizar botones de productos
   const productosDiv = document.getElementById("productos");
-  productos.forEach((prod, idx) => {
+  productos.forEach((prod) => {
     const btn = document.createElement("button");
     btn.textContent = `${prod.nombre} ($${prod.precio.toFixed(2)})`;
     btn.className = "bg-white border text-left px-2 py-1 rounded shadow text-sm";
@@ -70,7 +99,7 @@ function render() {
     productosDiv.appendChild(btn);
   });
 
-  // Mostrar carrito con botón para eliminar cada producto
+  // Renderizar carrito con opción eliminar
   const carritoLista = document.getElementById("carrito-lista");
   carrito.forEach((item, index) => {
     const li = document.createElement("li");
@@ -82,24 +111,20 @@ function render() {
     carritoLista.appendChild(li);
   });
 
-  document.getElementById("registrar").onclick = () => {
-    if (carrito.length > 0) {
-      ventas.push([...carrito]);
-      carrito = [];
-      render();
-    }
-  };
-
+  // Evento para registrar pedido en Firebase
   document.getElementById("registrar").onclick = async () => {
-  if (carrito.length > 0) {
+    if (carrito.length === 0) {
+      alert("El carrito está vacío.");
+      return;
+    }
     try {
       const pedido = {
-        timestamp: serverTimestamp(),
+        timestamp: serverTimestamp(), // marca de tiempo del servidor Firebase
         productos: carrito,
-        total: getTotal()
+        total: getTotal(),
       };
       await addDoc(collection(db, "pedidos"), pedido);
-      ventas.push([...carrito]);  // local tracking
+      ventas.push([...carrito]); // seguimiento local
       carrito = [];
       alert("Pedido guardado en la nube ✅");
       render();
@@ -107,23 +132,27 @@ function render() {
       console.error("Error al guardar en Firebase:", e);
       alert("Error al guardar pedido ❌");
     }
-  }
-};
+  };
 
+  // Evento para mostrar reporte local
   document.getElementById("reporte").onclick = () => {
+    if (ventas.length === 0) {
+      document.getElementById("reporteVentas").innerHTML = "No hay ventas registradas localmente.";
+      return;
+    }
+
     const resumen = {};
     ventas.forEach(pedido => {
       pedido.forEach(prod => {
-        if (resumen[prod.nombre]) {
-          resumen[prod.nombre].unidades++;
-          resumen[prod.nombre].total += prod.precio;
-        } else {
-          resumen[prod.nombre] = { unidades: 1, total: prod.precio };
+        if (!resumen[prod.nombre]) {
+          resumen[prod.nombre] = { unidades: 0, total: 0 };
         }
+        resumen[prod.nombre].unidades++;
+        resumen[prod.nombre].total += prod.precio;
       });
     });
 
-    const totalVentas = ventas.flat().reduce((a, b) => a + b.precio, 0).toFixed(2);
+    const totalVentas = ventas.flat().reduce((acc, prod) => acc + prod.precio, 0).toFixed(2);
     const totalPedidos = ventas.length;
 
     let reporteHTML = `<strong>Total vendido:</strong> $${totalVentas}<br><strong>Pedidos:</strong> ${totalPedidos}<br><br>`;
@@ -135,75 +164,61 @@ function render() {
     reporteHTML += `</ul></div>`;
     document.getElementById("reporteVentas").innerHTML = reporteHTML;
   };
-}
 
-function eliminarProducto(index) {
-  carrito.splice(index, 1);
-  render();
-}
+  // Evento para generar reporte diario desde Firebase
+  document.getElementById("reporteDiario").onclick = async () => {
+    const ahora = new Date();
+    const inicioDelDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const inicioTimestamp = Timestamp.fromDate(inicioDelDia);
 
-function getTotal() {
-  return carrito.reduce((a, b) => a + b.precio, 0);
-}
+    const pedidosRef = collection(db, "pedidos");
+    const q = query(pedidosRef, where("timestamp", ">=", inicioTimestamp));
+    const snapshot = await getDocs(q);
 
-import { db, collection, getDocs, query, where, Timestamp } from "./firebase.js";
+    const resumen = {};
+    let total = 0;
+    let pedidos = 0;
 
-async function generarReporteDiario() {
-  const ahora = new Date();
-  const inicioDelDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-  const inicioTimestamp = Timestamp.fromDate(inicioDelDia);
-
-  const pedidosRef = collection(db, "pedidos");
-  const q = query(pedidosRef, where("timestamp", ">=", inicioTimestamp));
-  const snapshot = await getDocs(q);
-
-  const resumen = {};
-  let total = 0;
-  let pedidos = 0;
-
-  snapshot.forEach(doc => {
-    const pedido = doc.data();
-    pedido.productos.forEach(prod => {
-      if (!resumen[prod.nombre]) resumen[prod.nombre] = { unidades: 0, total: 0 };
-      resumen[prod.nombre].unidades += 1;
-      resumen[prod.nombre].total += prod.precio;
-      total += prod.precio;
+    snapshot.forEach(doc => {
+      const pedido = doc.data();
+      pedido.productos.forEach(prod => {
+        if (!resumen[prod.nombre]) resumen[prod.nombre] = { unidades: 0, total: 0 };
+        resumen[prod.nombre].unidades += 1;
+        resumen[prod.nombre].total += prod.precio;
+        total += prod.precio;
+      });
+      pedidos++;
     });
-    pedidos++;
-  });
 
-  let html = `<strong>Pedidos de hoy:</strong> ${pedidos}<br><strong>Total vendido:</strong> $${total.toFixed(2)}<br><br>`;
-  html += "<ul>";
-  for (const nombre in resumen) {
-    const r = resumen[nombre];
-    html += `<li>${nombre}: ${r.unidades} uds - $${r.total.toFixed(2)}</li>`;
-  }
-  html += "</ul>";
+    let html = `<strong>Pedidos de hoy:</strong> ${pedidos}<br><strong>Total vendido:</strong> $${total.toFixed(2)}<br><br>`;
+    html += "<ul>";
+    for (const nombre in resumen) {
+      const r = resumen[nombre];
+      html += `<li>${nombre}: ${r.unidades} uds - $${r.total.toFixed(2)}</li>`;
+    }
+    html += "</ul>";
 
-  document.getElementById("reporteVentas").innerHTML = html;
+    document.getElementById("reporteVentas").innerHTML = html;
+  };
+
+  // Evento para limpiar pedidos antiguos (>24 horas)
+  document.getElementById("limpiar").onclick = async () => {
+    const ahora = new Date();
+    const hace24h = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+    const limite = Timestamp.fromDate(hace24h);
+
+    const pedidosRef = collection(db, "pedidos");
+    const q = query(pedidosRef, where("timestamp", "<", limite));
+    const snapshot = await getDocs(q);
+
+    const borrados = [];
+    for (const docu of snapshot.docs) {
+      await deleteDoc(doc(db, "pedidos", docu.id));
+      borrados.push(docu.id);
+    }
+
+    alert(`Pedidos antiguos eliminados ✅ (${borrados.length} pedidos borrados)`);
+  };
 }
 
-document.getElementById("reporte").onclick = generarReporteDiario;
-
-// Exponer eliminarProducto globalmente
-window.eliminarProducto = eliminarProducto;
-import { deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
-
-async function limpiarPedidosAntiguos() {
-  const ahora = new Date();
-  const hace24h = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
-  const limite = Timestamp.fromDate(hace24h);
-
-  const pedidosRef = collection(db, "pedidos");
-  const q = query(pedidosRef, where("timestamp", "<", limite));
-  const snapshot = await getDocs(q);
-
-  snapshot.forEach(async (docu) => {
-    await deleteDoc(doc(db, "pedidos", docu.id));
-  });
-
-  alert("Pedidos antiguos eliminados ✅");
-}
-
-document.getElementById("limpiar").onclick = limpiarPedidosAntiguos;
 render();
