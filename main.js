@@ -10,7 +10,9 @@ import {
   deleteDoc,
   doc
 } from "./firebase.js";
-import { jsPDF } from "jspdf";
+
+// 👇 usa la versión global de jsPDF
+const { jsPDF } = window.jspdf;
 
 const productos = [
   { nombre: "Salchi Papa", precio: 1.5 },
@@ -153,12 +155,12 @@ function eliminarProducto(index) {
   carrito.splice(index, 1);
   render();
 }
+window.eliminarProducto = eliminarProducto;
 
 function getTotal() {
   return carrito.reduce((a, b) => a + b.precio, 0);
 }
 
-window.eliminarProducto = eliminarProducto;
 function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
   const doc = new jsPDF();
   doc.setFontSize(14);
@@ -184,7 +186,7 @@ function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
   doc.save(`reporte_${fecha}.pdf`);
 }
 
-    async function generarReporteDiario() {
+async function generarReporteDiario() {
   const ahora = new Date();
   const inicioDelDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
   const inicioTimestamp = Timestamp.fromDate(inicioDelDia);
@@ -223,7 +225,6 @@ function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
   generarPDF(fechaHoy, total, pedidos, resumen);
 }
 
-
 async function limpiarPedidosAntiguos() {
   const ahora = new Date();
   const hace24h = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
@@ -241,5 +242,3 @@ async function limpiarPedidosAntiguos() {
 }
 
 render();
-
-window.eliminarProducto = eliminarProducto;
