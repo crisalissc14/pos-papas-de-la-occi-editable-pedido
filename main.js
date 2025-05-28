@@ -94,7 +94,7 @@ function render() {
   if (carrito.length > 0) {
     try {
       const pedido = {
-        fecha: new Date().toISOString(),
+        timestamp: serverTimestamp(),
         productos: carrito,
         total: getTotal()
       };
@@ -146,7 +146,64 @@ function getTotal() {
   return carrito.reduce((a, b) => a + b.precio, 0);
 }
 
+import { db, collection, getDocs, query, where, Timestamp } from "./firebase.js";
+
+async function generarReporteDiario() {
+  const ahora = new Date();
+  const inicioDelDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const inicioTimestamp = Timestamp.fromDate(inicioDelDia);
+
+  const pedidosRef = collection(db, "pedidos");
+  const q = query(pedidosRef, where("timestamp", ">=", inicioTimestamp));
+  const snapshot = await getDocs(q);
+
+  const resumen = {};
+  let total = 0;
+  let pedidos = 0;
+
+  snapshot.forEach(doc => {
+    const pedido = doc.data();
+    pedido.productos.forEach(prod => {
+      if (!resumen[prod.nombre]) resumen[prod.nombre] = { unidades: 0, total: 0 };
+      resumen[prod.nombre].unidades += 1;
+      resumen[prod.nombre].total += prod.precio;
+      total += prod.precio;
+    });
+    pedidos++;
+  });
+
+  let html = `<strong>Pedidos de hoy:</strong> ${pedidos}<br><strong>Total vendido:</strong> $${total.toFixed(2)}<br><br>`;
+  html += "<ul>";
+  for (const nombre in resumen) {
+    const r = resumen[nombre];
+    html += `<li>${nombre}: ${r.unidades} uds - $${r.total.toFixed(2)}</li>`;
+  }
+  html += "</ul>";
+
+  document.getElementById("reporteVentas").innerHTML = html;
+}
+
+document.getElementById("reporte").onclick = generarReporteDiario;
+
 // Exponer eliminarProducto globalmente
 window.eliminarProducto = eliminarProducto;
+import { deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+async function limpiarPedidosAntiguos() {
+  const ahora = new Date();
+  const hace24h = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+  const limite = Timestamp.fromDate(hace24h);
+
+  const pedidosRef = collection(db, "pedidos");
+  const q = query(pedidosRef, where("timestamp", "<", limite));
+  const snapshot = await getDocs(q);
+
+  snapshot.forEach(async (docu) => {
+    await deleteDoc(doc(db, "pedidos", docu.id));
+  });
+
+  alert("Pedidos antiguos eliminados ✅");
+}
+
+document.getElementById("limpiar").onclick = limpiarPedidosAntiguos;
 render();
