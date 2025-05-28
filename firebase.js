@@ -1,17 +1,17 @@
 // firebase.js
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  messagingSenderId: "TU_MESSAGING_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyCoDJTuseJytyNdhWRtYK_7LQj2ww_En9g",
+  authDomain: "pos-papasocci.firebaseapp.com",
+  projectId: "pos-papasocci",
+  storageBucket: "pos-papasocci.appspot.com", // ojo: tenía mal el dominio antes
+  messagingSenderId: "650286156534",
+  appId: "1:650286156534:web:be827305d8e94d77fabad7"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export { db };
+export { db, collection, addDoc };
