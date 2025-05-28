@@ -1,7 +1,20 @@
 // firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+  serverTimestamp,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCoDJTuseJytyNdhWRtYK_7LQj2ww_En9g",
   authDomain: "pos-papasocci.firebaseapp.com",
@@ -12,7 +25,21 @@ const firebaseConfig = {
   measurementId: "G-BMSK2M2JP2"
 };
 
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const db = getFirestore(app);
 
-export { db, collection, addDoc };
+// Exportar todo lo necesario
+export {
+  db,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+  serverTimestamp,
+  deleteDoc,
+  doc
+};
