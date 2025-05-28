@@ -10,6 +10,7 @@ import {
   deleteDoc,
   doc
 } from "./firebase.js";
+import { jsPDF } from "jspdf";
 
 const productos = [
   { nombre: "Salchi Papa", precio: 1.5 },
@@ -158,8 +159,32 @@ function getTotal() {
 }
 
 window.eliminarProducto = eliminarProducto;
+function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text(`Reporte Diario - ${fecha}`, 10, 10);
+  doc.setFontSize(12);
+  doc.text(`Total de pedidos: ${totalPedidos}`, 10, 20);
+  doc.text(`Total vendido: $${totalVentas.toFixed(2)}`, 10, 30);
 
-async function generarReporteDiario() {
+  doc.setFontSize(10);
+  doc.text("Detalle por producto:", 10, 40);
+
+  let y = 50;
+  for (const nombre in resumen) {
+    const { unidades, total } = resumen[nombre];
+    doc.text(`${nombre}: ${unidades} uds - $${total.toFixed(2)}`, 10, y);
+    y += 8;
+    if (y > 280) {
+      doc.addPage();
+      y = 10;
+    }
+  }
+
+  doc.save(`reporte_${fecha}.pdf`);
+}
+
+    async function generarReporteDiario() {
   const ahora = new Date();
   const inicioDelDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
   const inicioTimestamp = Timestamp.fromDate(inicioDelDia);
@@ -183,6 +208,8 @@ async function generarReporteDiario() {
     pedidos++;
   });
 
+  const fechaHoy = ahora.toISOString().split("T")[0];
+
   let html = `<strong>Pedidos de hoy:</strong> ${pedidos}<br><strong>Total vendido:</strong> $${total.toFixed(2)}<br><br>`;
   html += "<ul>";
   for (const nombre in resumen) {
@@ -190,9 +217,12 @@ async function generarReporteDiario() {
     html += `<li>${nombre}: ${r.unidades} uds - $${r.total.toFixed(2)}</li>`;
   }
   html += "</ul>";
-
   document.getElementById("reporteVentas").innerHTML = html;
+
+  // 📦 Genera y descarga el PDF automáticamente
+  generarPDF(fechaHoy, total, pedidos, resumen);
 }
+
 
 async function limpiarPedidosAntiguos() {
   const ahora = new Date();
