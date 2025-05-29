@@ -204,6 +204,7 @@ function getTotal() {
 window.eliminarProducto = eliminarProducto;
 
 function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
+  const { jsPDF } = window.jspdf; // ✅ Correcto
   const doc = new jsPDF();
   doc.setFontSize(14);
   doc.text(`Reporte Diario - ${fecha}`, 10, 10);
@@ -227,8 +228,6 @@ function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
 
   doc.save(`reporte_${fecha}.pdf`);
 }
- 
-  const { jsPDF } = window.jspdf;
 
 async function generarReporteDiario() {
   const ahora = new Date();
