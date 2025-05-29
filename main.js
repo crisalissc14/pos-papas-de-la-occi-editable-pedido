@@ -227,6 +227,8 @@ function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
 
   doc.save(`reporte_${fecha}.pdf`);
 }
+ 
+  const { jsPDF } = window.jspdf;
 
 async function generarReporteDiario() {
   const ahora = new Date();
