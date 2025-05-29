@@ -96,40 +96,51 @@ function render() {
     grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
 
     categorias[categoria].forEach((prod) => {
-  
-  const card = document.createElement("div");
-  card.className = "producto-card";
+    const card = document.createElement("div");
+    card.className = "producto-card";
 
-  card.innerHTML = `
-  <div class="producto-nombre">${prod.nombre}</div>
-  <div class="producto-precio">S/ ${prod.precio.toFixed(2)}</div>
-`;
+    card.innerHTML = `
+      <div class="producto-nombre">${prod.nombre}</div>
+      <div class="producto-precio">S/ ${prod.precio.toFixed(2)}</div>
+    `;
 
-card.onclick = () => {
-  carrito.push(prod);
-  render();
-};
+    card.onclick = () => {
+      carrito.push(prod);
+      render();
+    };
 
-grid.appendChild(card);
+    grid.appendChild(card);
+  });
 
-
-  grid.appendChild(card);
-});
 
 
     productosDiv.appendChild(grid);
   }
 
   const carritoLista = document.getElementById("carrito-lista");
+  carritoLista.innerHTML = ""; // Asegúrate de limpiar la lista antes de renderizar
+
   carrito.forEach((item, index) => {
     const li = document.createElement("li");
     li.className = "flex justify-between items-center border-b py-1";
-    li.innerHTML = `
-      <span>${item.nombre} ($${item.precio.toFixed(2)})</span>
-      <button class="text-red-500 text-xs" onclick="eliminarProducto(${index})">❌</button>
-    `;
+
+    const span = document.createElement("span");
+    span.textContent = `${item.nombre} ($${item.precio.toFixed(2)})`;
+
+    const button = document.createElement("button");
+    button.className = "text-red-500 text-xs";
+    button.textContent = "❌";
+    button.addEventListener("click", () => {
+      eliminarProducto(index);
+    });
+
+    li.appendChild(span);
+    li.appendChild(button);
     carritoLista.appendChild(li);
   });
+
+  const totalElement = document.getElementById("total");
+  totalElement.textContent = total.toFixed(2);
 
   document.getElementById("registrar").onclick = async () => {
     if (carrito.length > 0) {
