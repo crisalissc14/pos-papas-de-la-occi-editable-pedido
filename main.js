@@ -10,43 +10,48 @@ import {
   deleteDoc,
   doc
 } from "./firebase.js";
+import { jsPDF } from "jspdf";
 
-// 👇 usa la versión global de jsPDF
-const { jsPDF } = window.jspdf;
-
-const productos = [
-  { nombre: "Salchi Papa", precio: 1.5 },
-  { nombre: "Salchi Huevo", precio: 1.75 },
-  { nombre: "Papi Carne", precio: 2.0 },
-  { nombre: "Papi Pollo", precio: 2.25 },
-  { nombre: "Completa 1", precio: 3.0 },
-  { nombre: "Completa 2", precio: 3.25 },
-  { nombre: "Súper Completa", precio: 4.0 },
-  { nombre: "Porción de papas", precio: 1.25 },
-  { nombre: "Hamburguesa Sencilla", precio: 1.5 },
-  { nombre: "Carne y huevo", precio: 1.75 },
-  { nombre: "Carne y queso", precio: 2.0 },
-  { nombre: "Carne y jamón", precio: 2.0 },
-  { nombre: "Carne, queso y jamón", precio: 2.5 },
-  { nombre: "Carne, queso, jamón y huevo", precio: 2.75 },
-  { nombre: "Doble carne", precio: 2.25 },
-  { nombre: "Carne, queso, piña", precio: 2.5 },
-  { nombre: "Sencilla + papas", precio: 2.5 },
-  { nombre: "Carne y huevo + papas", precio: 2.75 },
-  { nombre: "Carne y queso + papas", precio: 3.0 },
-  { nombre: "Carne y jamón + papas", precio: 3.0 },
-  { nombre: "Carne, queso y jamón + papas", precio: 3.5 },
-  { nombre: "Carne, queso, jamón y huevo + papas", precio: 3.75 },
-  { nombre: "Doble carne + papas", precio: 3.25 },
-  { nombre: "Carne, queso, piña + papas", precio: 3.5 },
-  { nombre: "Completa", precio: 3.0 },
-  { nombre: "Súper completa", precio: 3.25 },
-  { nombre: "Completa + papas", precio: 4.0 },
-  { nombre: "Súper completa + papas", precio: 4.25 },
-  { nombre: "Gaseosa 250ml", precio: 0.5 },
-  { nombre: "Gaseosa 500ml", precio: 0.75 },
-  { nombre: "Agua sin gas 600ml", precio: 0.75 }
-];
+const categorias = {
+  "Papas": [
+    { nombre: "Salchi Papa", precio: 1.5 },
+    { nombre: "Salchi Huevo", precio: 1.75 },
+    { nombre: "Papi Carne", precio: 2.0 },
+    { nombre: "Papi Pollo", precio: 2.25 }
+  ],
+  "Hamburguesas": [
+    { nombre: "Hamburguesa Sencilla", precio: 1.5 },
+    { nombre: "Carne y huevo", precio: 1.75 },
+    { nombre: "Carne y queso", precio: 2.0 },
+    { nombre: "Carne y jamón", precio: 2.0 },
+    { nombre: "Carne, queso y jamón", precio: 2.5 },
+    { nombre: "Carne, queso, jamón y huevo", precio: 2.75 },
+    { nombre: "Doble carne", precio: 2.25 },
+    { nombre: "Carne, queso, piña", precio: 2.5 }
+  ],
+  "Combos": [
+    { nombre: "Sencilla + papas", precio: 2.5 },
+    { nombre: "Carne y huevo + papas", precio: 2.75 },
+    { nombre: "Carne y queso + papas", precio: 3.0 },
+    { nombre: "Carne y jamón + papas", precio: 3.0 },
+    { nombre: "Carne, queso y jamón + papas", precio: 3.5 },
+    { nombre: "Carne, queso, jamón y huevo + papas", precio: 3.75 },
+    { nombre: "Doble carne + papas", precio: 3.25 },
+    { nombre: "Carne, queso, piña + papas", precio: 3.5 },
+    { nombre: "Completa", precio: 3.0 },
+    { nombre: "Súper completa", precio: 3.25 },
+    { nombre: "Completa + papas", precio: 4.0 },
+    { nombre: "Súper completa + papas", precio: 4.25 }
+  ],
+  "Extras": [
+    { nombre: "Porción de papas", precio: 1.25 }
+  ],
+  "Bebidas": [
+    { nombre: "Gaseosa 250ml", precio: 0.5 },
+    { nombre: "Gaseosa 500ml", precio: 0.75 },
+    { nombre: "Agua sin gas 600ml", precio: 0.75 }
+  ]
+};
 
 let carrito = [];
 let ventas = [];
@@ -57,7 +62,7 @@ function render() {
   const total = getTotal();
   app.innerHTML = `
     <h1 class="text-2xl font-bold mb-4 text-center">POS PAPAS DE LA OCCI</h1>
-    <div id="productos" class="grid grid-cols-2 gap-2 mb-4 max-h-96 overflow-y-auto"></div>
+    <div id="productos" class="mb-4 max-h-96 overflow-y-auto"></div>
 
     <div class="mb-2">
       <h2 class="font-semibold text-lg">Pedido actual:</h2>
@@ -79,16 +84,41 @@ function render() {
   `;
 
   const productosDiv = document.getElementById("productos");
-  productos.forEach((prod, idx) => {
-    const btn = document.createElement("button");
-    btn.textContent = `${prod.nombre} ($${prod.precio.toFixed(2)})`;
-    btn.className = "bg-white border text-left px-2 py-1 rounded shadow text-sm";
-    btn.onclick = () => {
-      carrito.push(prod);
-      render();
-    };
-    productosDiv.appendChild(btn);
-  });
+  productosDiv.innerHTML = "";
+
+  for (const categoria in categorias) {
+    const titulo = document.createElement("h3");
+    titulo.textContent = categoria;
+    titulo.className = "text-xl font-bold mt-4 mb-2";
+    productosDiv.appendChild(titulo);
+
+    const grid = document.createElement("div");
+    grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
+
+    categorias[categoria].forEach((prod) => {
+  
+  const card = document.createElement("div");
+  card.className = "producto-card";
+
+  card.innerHTML = `
+  <div class="producto-nombre">${prod.nombre}</div>
+  <div class="producto-precio">S/ ${prod.precio.toFixed(2)}</div>
+`;
+
+card.onclick = () => {
+  carrito.push(prod);
+  render();
+};
+
+grid.appendChild(card);
+
+
+  grid.appendChild(card);
+});
+
+
+    productosDiv.appendChild(grid);
+  }
 
   const carritoLista = document.getElementById("carrito-lista");
   carrito.forEach((item, index) => {
@@ -155,11 +185,12 @@ function eliminarProducto(index) {
   carrito.splice(index, 1);
   render();
 }
-window.eliminarProducto = eliminarProducto;
 
 function getTotal() {
   return carrito.reduce((a, b) => a + b.precio, 0);
 }
+
+window.eliminarProducto = eliminarProducto;
 
 function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
   const doc = new jsPDF();
@@ -221,7 +252,6 @@ async function generarReporteDiario() {
   html += "</ul>";
   document.getElementById("reporteVentas").innerHTML = html;
 
-  // 📦 Genera y descarga el PDF automáticamente
   generarPDF(fechaHoy, total, pedidos, resumen);
 }
 
