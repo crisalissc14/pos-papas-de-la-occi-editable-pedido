@@ -48,6 +48,13 @@ const productos = [
 
 let carrito = [];
 let ventas = [];
+let local = localStorage.getItem("local");
+
+if (!local) {
+  local = prompt("¿Desde qué local estás vendiendo? (ej: Celular 1, Sucursal B)");
+  localStorage.setItem("local", local);
+}
+
 
 const app = document.getElementById("app");
 
@@ -108,7 +115,8 @@ function render() {
         const pedido = {
           timestamp: serverTimestamp(),
           productos: carrito,
-          total: getTotal()
+          total: getTotal(),
+          local: local// agregaste esto
         };
         await addDoc(collection(db, "pedidos"), pedido);
         ventas.push([...carrito]);
@@ -198,28 +206,68 @@ async function generarReporteDiario() {
   const q = query(pedidosRef, where("timestamp", ">=", inicioTimestamp));
   const snapshot = await getDocs(q);
 
-  const resumen = {};
-  let total = 0;
-  let pedidos = 0;
+  const resumenPorLocal = {};
+  const conteoPorLocal = {};
 
   snapshot.forEach(doc => {
     const pedido = doc.data();
-    if (pedido.productos && Array.isArray(pedido.productos)) {
+    const local = pedido.local || "Desconocido";
+
+    if (!resumenPorLocal[local]) {
+      resumenPorLocal[local] = {};
+      conteoPorLocal[local] = { total: 0, pedidos: 0 };
+    }
+
+    if (Array.isArray(pedido.productos)) {
       pedido.productos.forEach(prod => {
-        if (!resumen[prod.nombre]) {
-          resumen[prod.nombre] = { unidades: 0, total: 0 };
+        if (!resumenPorLocal[local][prod.nombre]) {
+          resumenPorLocal[local][prod.nombre] = { unidades: 0, total: 0 };
         }
-        resumen[prod.nombre].unidades++;
-        resumen[prod.nombre].total += prod.precio;
-        total += prod.precio;
+        resumenPorLocal[local][prod.nombre].unidades++;
+        resumenPorLocal[local][prod.nombre].total += prod.precio;
+        conteoPorLocal[local].total += prod.precio;
       });
-      pedidos++;
+      conteoPorLocal[local].pedidos++;
     }
   });
 
   const fecha = ahora.toISOString().split("T")[0]; // YYYY-MM-DD
-  generarPDF(fecha, total, pedidos, resumen);
+
+  // Generar PDF con múltiples locales
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text(`Reporte Diario - ${fecha}`, 10, 10);
+  let y = 20;
+
+  for (const local in resumenPorLocal) {
+    doc.setFontSize(12);
+    doc.text(`📍 ${local}`, 10, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.text(`Total vendido: $${conteoPorLocal[local].total.toFixed(2)}`, 10, y); y += 6;
+    doc.text(`Total de pedidos: ${conteoPorLocal[local].pedidos}`, 10, y); y += 8;
+    doc.text("Detalle por producto:", 10, y); y += 6;
+
+    for (const nombre in resumenPorLocal[local]) {
+      const { unidades, total } = resumenPorLocal[local][nombre];
+      doc.text(`${nombre}: ${unidades} uds - $${total.toFixed(2)}`, 10, y);
+      y += 6;
+      if (y > 280) {
+        doc.addPage();
+        y = 10;
+      }
+    }
+
+    y += 10;
+    if (y > 280) {
+      doc.addPage();
+      y = 10;
+    }
+  }
+
+  doc.save(`reporte_${fecha}.pdf`);
 }
+
 
 async function limpiarPedidosAntiguos() {
   const ahora = new Date();
