@@ -10,6 +10,7 @@ import {
   deleteDoc,
   doc
 } from "./firebase.js";
+const { jsPDF } = window.jspdf;
 
 const productos = [
   { nombre: "Salchi Papa", precio: 1.5 },
@@ -182,7 +183,7 @@ function generarPDF(fecha, totalVentas, totalPedidos, resumen) {
 
   doc.save(`reporte_${fecha}.pdf`);
 }
-
+window.eliminarProducto = eliminarProducto
 
 async function generarReporteDiario() {
   const ahora = new Date();
@@ -199,9 +200,22 @@ async function generarReporteDiario() {
 
   snapshot.forEach(doc => {
     const pedido = doc.data();
-    pedido.productos.forEach(prod => {
-      if (!resumen[prod.nombre]) resumen[prod.nombre] = { unidades: 0, total: 0 };
-   
+    if (pedido.productos && Array.isArray(pedido.productos)) {
+      pedido.productos.forEach(prod => {
+        if (!resumen[prod.nombre]) {
+          resumen[prod.nombre] = { unidades: 0, total: 0 };
+        }
+        resumen[prod.nombre].unidades++;
+        resumen[prod.nombre].total += prod.precio;
+        total += prod.precio;
+      });
+      pedidos++;
+    }
+  });
+
+  const fecha = ahora.toISOString().split("T")[0]; // YYYY-MM-DD
+  generarPDF(fecha, total, pedidos, resumen);
+}
 
 async function limpiarPedidosAntiguos() {
   const ahora = new Date();
@@ -220,5 +234,3 @@ async function limpiarPedidosAntiguos() {
 }
 
 render();
-
-window.eliminarProducto = eliminarProducto;
