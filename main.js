@@ -54,33 +54,36 @@ const app = document.getElementById("app");
 function render() {
   const total = getTotal();
   app.innerHTML = `
-    <h1 class="text-2xl font-bold mb-4 text-center">POS PAPAS DE LA OCCI</h1>
-    <div id="productos" class="grid grid-cols-2 gap-2 mb-4 max-h-96 overflow-y-auto"></div>
+    <div class="max-w-screen-lg mx-auto p-4">
+      <h1 class="text-3xl font-bold mb-6 text-center">POS PAPAS DE LA OCCI</h1>
 
-    <div class="mb-2">
-      <h2 class="font-semibold text-lg">Pedido actual:</h2>
-      <ul id="carrito-lista" class="text-sm mb-2"></ul>
-      <div class="text-lg">Total: $<span id="total">${total.toFixed(2)}</span></div>
+      <div id="productos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 max-h-[32rem] overflow-y-auto"></div>
+
+      <div class="mb-4">
+        <h2 class="font-semibold text-xl mb-2">Pedido actual:</h2>
+        <ul id="carrito-lista" class="text-base mb-2"></ul>
+        <div class="text-xl font-semibold">Total: $<span id="total">${total.toFixed(2)}</span></div>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <button id="registrar" class="bg-green-600 text-white px-6 py-3 rounded text-lg w-full">Registrar pedido</button>
+        <button id="reporte" class="bg-blue-600 text-white px-6 py-3 rounded text-lg w-full">Ver reporte</button>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <button id="reporteDiario" class="bg-yellow-600 text-white px-6 py-3 rounded text-lg w-full">Reporte Diario</button>
+        <button id="limpiar" class="bg-red-600 text-white px-6 py-3 rounded text-lg w-full">Limpiar pedidos viejos</button>
+      </div>
+
+      <div id="reporteVentas" class="mt-6 text-base"></div>
     </div>
-
-    <div class="flex gap-2 mb-2">
-      <button id="registrar" class="bg-green-600 text-white px-4 py-2 rounded w-full">Registrar pedido</button>
-      <button id="reporte" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Ver reporte</button>
-    </div>
-
-    <div class="flex gap-2 mb-4">
-      <button id="reporteDiario" class="bg-yellow-600 text-white px-4 py-2 rounded w-full">Reporte Diario</button>
-      <button id="limpiar" class="bg-red-600 text-white px-4 py-2 rounded w-full">Limpiar pedidos viejos</button>
-    </div>
-
-    <div id="reporteVentas" class="mt-4 text-sm"></div>
   `;
 
   const productosDiv = document.getElementById("productos");
   productos.forEach((prod, idx) => {
     const btn = document.createElement("button");
     btn.textContent = `${prod.nombre} ($${prod.precio.toFixed(2)})`;
-    btn.className = "bg-white border text-left px-2 py-1 rounded shadow text-sm";
+    btn.className = "bg-white border border-gray-300 text-left px-4 py-3 rounded-lg shadow-md text-base font-semibold hover:bg-gray-100 transition";
     btn.onclick = () => {
       carrito.push(prod);
       render();
@@ -91,10 +94,10 @@ function render() {
   const carritoLista = document.getElementById("carrito-lista");
   carrito.forEach((item, index) => {
     const li = document.createElement("li");
-    li.className = "flex justify-between items-center border-b py-1";
+    li.className = "flex justify-between items-center border-b py-2";
     li.innerHTML = `
       <span>${item.nombre} ($${item.precio.toFixed(2)})</span>
-      <button class="text-red-500 text-xs" onclick="eliminarProducto(${index})">❌</button>
+      <button class="text-red-500 text-sm font-bold" onclick="eliminarProducto(${index})">❌</button>
     `;
     carritoLista.appendChild(li);
   });
@@ -148,6 +151,7 @@ function render() {
   document.getElementById("reporteDiario").onclick = generarReporteDiario;
   document.getElementById("limpiar").onclick = limpiarPedidosAntiguos;
 }
+
 
 function eliminarProducto(index) {
   carrito.splice(index, 1);
